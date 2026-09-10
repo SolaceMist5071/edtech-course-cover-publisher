@@ -7,11 +7,11 @@ export INFRAI_API_KEY=your-key
 python3 -m src.edtech_listing
 ```
 
-The service models a course listing with an educator, a learner deadline, and cover bytes. It uploads the cover through Infrai's one API, calls `image.background_remove`, and returns a small report with the cutout asset id and delivery state. One key covers both image operations, so the example stays a compact client rather than a vendor-specific integration.
+The service models a course listing with an educator, a learner deadline, and cover bytes. It uploads the cover through Infrai's one API, calls `image.background_remove`, and returns a small report with the cutout asset id and delivery state. One key covers both image operations, so the example stays a compact client rather than a vendor-specific integration. We run this on a cron; if a tick is missed and the job retries, the upload must be idempotent to avoid duplicate covers.
 
 ## Request boundary
 
-`CourseListing` is the typed input. `publish_listing` uploads `cover` using the original `filename`, then sends the returned image id with `format: "png"`. The deadline decision is deterministic: a listing is `open` on the deadline date and `closed` afterward. The client decodes the `{ok, data, error, metadata}` envelope before handling HTTP status and backs off on rate limits.
+`CourseListing` is the typed input. `publish_listing` uploads `cover` using the original `filename`, then sends the returned image id with `format: "png"`. The deadline decision is deterministic: a listing is `open` on the deadline date and `closed` afterward. The client decodes the `{ok, data, error, metadata}` envelope before handling HTTP status and backs off on rate limits. In a postmortem, most incidents here were rate-limit retries without backoff.
 
 ## Verify the decision
 
@@ -21,7 +21,7 @@ Install pytest, then run:
 python3 -m pytest -q
 ```
 
-The test feeds an expired deadline and expects `delivery_status == "closed"` while asserting the image request boundary with a fake client. No network call is needed for this check.
+The test feeds an expired deadline and expects `delivery_status == "closed"` while asserting the image request boundary with a fake client. No network call is needed for this check, which keeps CI fast and the postmortem reproducible.
 
 ## Files
 
